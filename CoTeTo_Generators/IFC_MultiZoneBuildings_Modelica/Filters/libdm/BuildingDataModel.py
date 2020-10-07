@@ -22,15 +22,15 @@ class Material:
 
     def __init__(self, name='', **kwargs):
         self.name = name
-        self.density = None
-        self.capacity = None
-        self.conductivity = None
+        self.density = 650 # default density
+        self.capacity = 850 # default capacity
+        self.conductivity = 0.18 # default conductivity
         self.setParameter(**kwargs)
 
     def setParameter(self, **kwargs):
         if kwargs is not None:
             for k in kwargs:
-                if k in Material.att:
+                if k in Material.att and kwargs[k]:
                     setattr(self, k, kwargs[k])
                 else:
                     raise TypeError(k, 'is an unknown parameter')

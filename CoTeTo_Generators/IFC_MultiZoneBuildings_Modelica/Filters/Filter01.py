@@ -201,37 +201,79 @@ def mapIFCtoBuildingDataModel(file,filename):
         buildingData.addOriginalWindow(owi)
 
     ## Materials
+    mats = {}
+    for ram in file.by_type("ifcrelassociatesmaterial"):
+        if ram.RelatingMaterial.is_a("IfcMaterial"):
+            mats.setdefault(ram.RelatingMaterial, []).extend([x for x in ram.RelatedObjects if x.is_a("IfcBuildingElement")])
+        elif ram.RelatingMaterial.is_a("IfcMaterialLayerSet"):
+            if ram.RelatingMaterial.MaterialLayers:
+                ml = ram.RelatingMaterial.MaterialLayers[0]
+                objects = []
+                for o in [x for x in ram.RelatedObjects if x.is_a("IfcBuildingElementType")]:
+                    for typo in o.ObjectTypeOf:
+                        if typo.is_a("IfcRelDefinesByType"):
+                            mats.setdefault(ml.Material, []).extend(typo.RelatedObjects)
+                        elif typo.is_a("IfcBuildingElement"):
+                            mats.setdefault(ml.Material, []).append(typo)
+        elif ram.RelatingMaterial.is_a("IfcMaterialLayerSetUsage"):
+            ml = ram.RelatingMaterial.ForLayerSet.MaterialLayers[0]
+            objects = []
+            for o in [x for x in ram.RelatedObjects if x.is_a("IfcBuildingElementType")]:
+                for typo in o.ObjectTypeOf:
+                    if typo.is_a("IfcRelDefinesByType"):
+                        mats.setdefault(ml.Material, []).extend(typo.RelatedObjects)
+                    elif typo.is_a("IfcBuildingElement"):
+                        mats.setdefault(ml.Material, []).append(typo)
+            for i in [x for x in ram.RelatedObjects if x.is_a("IfcBuildingElement")]:
+                mats.setdefault(ml.Material, []).append(i)
+
     props = {}
     for mp in file.by_type("IfcMaterialProperties"):
-        props.setdefault(mp.Material.Name, {})
+        props.setdefault(mp.Material, {})
         if mp.is_a("IfcThermalMaterialProperties"):
             if mp.SpecificHeatCapacity:
-                props[mp.Material.Name]["Cp"] = mp.SpecificHeatCapacity
+                props[mp.Material]["Cp"] = mp.SpecificHeatCapacity
             if mp.ThermalConductivity:
-                props[mp.Material.Name]["k"] = mp.ThermalConductivity
+                props[mp.Material]["k"] = mp.ThermalConductivity
         if mp.is_a("IfcGeneralMaterialProperties"):
             if mp.MassDensity:
-                props[mp.Material.Name]["rho"] = mp.MassDensity
+                props[mp.Material]["rho"] = mp.MassDensity
+
+    def printProperty(p,mat,name):
+        if p.is_a("IfcPropertySingleValue"):
+            if p.NominalValue.is_a("IfcMassDensityMeasure") and p.Name == "MassDensity":
+                props.setdefault(mat, {})
+                props[mat]["rho"] = p.NominalValue.wrappedValue
+            if p.NominalValue.is_a("IfcSpecificHeatCapacityMeasure") and p.Name == "SpecificHeatCapacity":
+                props.setdefault(mat, {})
+                props[mat]["Cp"] = p.NominalValue.wrappedValue
+            if p.NominalValue.is_a("IfcThermalConductivityMeasure") and p.Name == "ThermalConductivity":
+                props.setdefault(mat, {})
+                props[mat]["k"] = p.NominalValue.wrappedValue
+        elif p.is_a("IfcComplexProperty"):
+            browsePropertySet(p,mat)
+
+    def browsePropertySet(ps,mat):
+        if ps.HasProperties:
+            for p in ps.HasProperties:
+                printProperty(p,mat,ps.Name)
+
+    for mat in [x for x in mats if x not in props or not props[x]]:
+        for s in mats[mat]:
+            for rd in s.IsDefinedBy:
+                if rd.is_a("IfcRelDefinesByType") and rd.RelatingType.HasPropertySets:
+                    for ps in rd.RelatingType.HasPropertySets:
+                        browsePropertySet(ps, mat)
+                elif rd.is_a("IfcRelDefinesByProperties"):
+                    browsePropertySet(rd.RelatingPropertyDefinition, mat)
+            if mat in props and props[mat]:
+                break
+
     for mat,prop in props.items():
         k = prop["k"] if "k" in prop else None
         c = prop["Cp"] if "Cp" in prop else None
         d = prop["rho"] if "rho" in prop else None
-        buildingData.addMaterial(bdm.Material(name=mat, density=d, capacity=c, conductivity=k))
-
-    # for mp in file.by_type("IfcMaterialProperties"):
-    #     k = None
-    #     rho = None
-    #     c = None
-
-    #     if mp.is_a("IfcThermalMaterialProperties"):
-    #         if mp.SpecificHeatCapacity:
-    #             c = mp.SpecificHeatCapacity
-    #         if mp.ThermalConductivity:
-    #             k = mp.ThermalConductivity
-    #     if mp.is_a("IfcGeneralMaterialProperties"):
-    #         if mp.MassDensity:
-    #             rho = mp.MassDensity
-    #     buildingData.addMaterial(bdm.Material(name=mp.Material.Name, density=rho, capacity=c, conductivity=k))
+        buildingData.addMaterial(bdm.Material(name=mat.Name, density=d, capacity=c, conductivity=k))
 
     ## Construction types
     for con in MaterialLayerset.items():

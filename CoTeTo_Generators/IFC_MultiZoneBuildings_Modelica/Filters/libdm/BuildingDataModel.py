@@ -213,7 +213,8 @@ class Building:
            'width',
            'heightSto',
            'nSto',
-           'thermalLoads')
+           'thermalLoads',
+           'materials')
 
     def __init__(self, id='', name='', pos=(0.0, 0.0, 0.0), **kwargs):
         self.id = str(id)
@@ -242,6 +243,7 @@ class Building:
         self.heightSto = None
         self.nSto = None
         self.thermalLoads = None
+        self.materials = []
         self.setParameter(**kwargs)
 
     def addOriginalWall(self, originalWall):
@@ -258,6 +260,9 @@ class Building:
 
     def addConstruction(self, construction):
         self.constructions.append(construction)
+
+    def addMaterial(self, material):
+        self.materials.append(material)
 
     def addZone(self, zone):
         self.zones.append(zone)
@@ -308,6 +313,8 @@ class Building:
                 return self.doorElements
             if value == 'constructions':
                 return self.constructions
+            if value == 'materials':
+                return self.materials
             # 0D modelling approach
             if value == 'UValFac':
                 if self.UValFac is None:

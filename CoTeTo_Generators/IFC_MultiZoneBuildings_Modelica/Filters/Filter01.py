@@ -113,7 +113,7 @@ def mapIFCtoBuildingDataModel(file,filename):
     # Dictionary with key name of Ifc element (IfcWall, ...) containg a list of the element-id which
     # for some reason (i.e. wrong definition, too complex, ...) should be disregarded.
     black_list = {}
-    # Main programm:
+    # Main programm: 
     # 1.Check Ifc file
     # Search for spaces overlapping with building elements and correct them
     # overlappedId,overlappedShape = ifcLib.getOverlappedelements(ifc_file)
@@ -196,9 +196,42 @@ def mapIFCtoBuildingDataModel(file,filename):
     for osl in originalSlabs:
         buildingData.addOriginalSlab(osl)
 
-    ## Original slabs
+    ## Original Windows
     for owi in originalWindows:
         buildingData.addOriginalWindow(owi)
+
+    ## Materials
+    props = {}
+    for mp in file.by_type("IfcMaterialProperties"):
+        props.setdefault(mp.Material.Name, {})
+        if mp.is_a("IfcThermalMaterialProperties"):
+            if mp.SpecificHeatCapacity:
+                props[mp.Material.Name]["Cp"] = mp.SpecificHeatCapacity
+            if mp.ThermalConductivity:
+                props[mp.Material.Name]["k"] = mp.ThermalConductivity
+        if mp.is_a("IfcGeneralMaterialProperties"):
+            if mp.MassDensity:
+                props[mp.Material.Name]["rho"] = mp.MassDensity
+    for mat,prop in props.items():
+        k = prop["k"] if "k" in prop else None
+        c = prop["Cp"] if "Cp" in prop else None
+        d = prop["rho"] if "rho" in prop else None
+        buildingData.addMaterial(bdm.Material(name=mat, density=d, capacity=c, conductivity=k))
+
+    # for mp in file.by_type("IfcMaterialProperties"):
+    #     k = None
+    #     rho = None
+    #     c = None
+
+    #     if mp.is_a("IfcThermalMaterialProperties"):
+    #         if mp.SpecificHeatCapacity:
+    #             c = mp.SpecificHeatCapacity
+    #         if mp.ThermalConductivity:
+    #             k = mp.ThermalConductivity
+    #     if mp.is_a("IfcGeneralMaterialProperties"):
+    #         if mp.MassDensity:
+    #             rho = mp.MassDensity
+    #     buildingData.addMaterial(bdm.Material(name=mp.Material.Name, density=rho, capacity=c, conductivity=k))
 
     ## Construction types
     for con in MaterialLayerset.items():
@@ -210,7 +243,8 @@ def mapIFCtoBuildingDataModel(file,filename):
                 thickness.append(layer.Thickness/1000.0)
             else: # length unit in the IFC file in m
                 thickness.append(layer.Thickness)
-            material.append("BuildingSystems.HAM.Data.MaterialProperties.Thermal.Masea.Concrete")
+            material.append(layer.Material.Name)    
+            #material.append("BuildingSystems.HAM.Data.MaterialProperties.Thermal.Masea.Concrete")
         buildingData.addConstruction(bdm.Construction(name="Construction"+str(ico),
                                                       numberOfLayers=len(con[1]),
                                                       thickness=thickness,
@@ -222,7 +256,7 @@ def mapIFCtoBuildingDataModel(file,filename):
     ## Thermal zones
     izo = 1
     for space in Spaces:
-        treatedZones[space.Space.GlobalId] = "zone_" + str(izo)
+        treatedZones[space.Space.GlobalId] = space.Space.LongName+"_"+ str(space.Space.Name) #str(izo)
         izo = izo + 1
 
     iwa = 1
@@ -369,6 +403,13 @@ def getGeneratorData(buildingData):
     Takes the information from the building data model and store it
     in the data model for the multizone building code generator
     '''
+    ## Materials
+    materials = []
+    for mat in buildingData.getParameter('materials'):
+        materials.append(dmg.Material(name=mat.name,
+                                        density=mat.density,
+                                        capacity=mat.capacity,
+                                        conductivity=mat.conductivity))
 
     ## Construction types
     constructions = []
@@ -480,7 +521,8 @@ def getGeneratorData(buildingData):
                                         originalSlabs = buildingData.getParameter('originalSlabs'),
                                         originalWindows = buildingData.getParameter('originalWindows'))
 
-    return {'constructions':constructions,
+    return {'materials':materials,
+            'constructions':constructions,
             'zones':zones,
             'elementsOpaque':elementsOpaque,
             'elementsTransparent':elementsTransparent,

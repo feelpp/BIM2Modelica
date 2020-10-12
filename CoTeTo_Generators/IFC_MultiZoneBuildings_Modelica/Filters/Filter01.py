@@ -296,16 +296,22 @@ def mapIFCtoBuildingDataModel(file,filename):
     treatedZones = {}
 
     ## Thermal zones
-    izo = 1
+    # izo = 1
     for space in Spaces:
         treatedZones[space.Space.GlobalId] = space.Space.LongName+"_"+ str(space.Space.Name) #str(izo)
-        izo = izo + 1
+    #     izo = izo + 1
+    zone_for_space = {}
+    for z in file.by_type("IfcZone"):
+        for ratg in z.IsGroupedBy:
+            for s in ratg.RelatedObjects:
+                zone_for_space[s.GlobalId] = z
 
     iwa = 1
     isl = 1
     ido = 1
     iwi = 1
-    for space in Spaces:
+    for zone in file.by_type("IfcZone"):
+        volume = 0
         iel=0
         iwaz = 0
         islz = 0
@@ -313,57 +319,60 @@ def mapIFCtoBuildingDataModel(file,filename):
         iwiz = 0
         heightMin = 0.0
         heightMax = 0.0
-        ## Construction elements
-        for bound in space.Boundaries:
-            if bound.OtherSideSpace in treatedZones.keys() or bound.OtherSideSpace == "EXTERNAL":
-                side1 =  treatedZones[space.Space.GlobalId]
-                if bound.OtherSideSpace == "EXTERNAL":
-                    side2 = "AMB"
-                else:
-                    side2 = treatedZones[bound.OtherSideSpace]
+        for space in Spaces:
+            ## Construction elements
+            for bound in space.Boundaries:
+                if bound.OtherSideSpace in treatedZones.keys() or bound.OtherSideSpace == "EXTERNAL":
+                    side1 = zone.Name
+                    if bound.OtherSideSpace == "EXTERNAL":
+                        side2 = "AMB"
+                    elif zone_for_space[bound.OtherSideSpace] != zone:
+                        side2 = zone_for_space[bound.OtherSideSpace].Name
+                    else:
+                        continue
 
-                ## Walls
-                if bound.RelatedBuildingElement in WallInfo.keys() and bound.thickness[0] > 0.0:
-                    iel = iel + 1
-                    iwaz = iwaz + 1
-                    if bound.OtherSideBoundary not in treatedBuildingEle.keys():
-                        treatedBuildingEle[bound.Id] = "wall_"+str(iwa)
-                        includedWindows = []
-                        includedDoors = []
-                        for b in space.Boundaries:
-                            if b.Id in bound.IncludedBoundariesIds:
-                                if b.RelatedBuildingElement in WindowToStyle.keys():
-                                    includedWindows.append((b.Width,b.Height))
-                                if b.RelatedBuildingElement in DoorToStyle.keys():
-                                    includedDoors.append((b.Width,b.Height))
-                        buildingData.addOpaqueElement(bdm.BuildingElementOpaque(id=bound.Id,
-                                                                                name="wall_"+str(iwa),
-                                                                                pos=(bound.Position.X(),bound.Position.Y(),bound.Position.Z()),
-                                                                                angleDegAzi=azimuthAngle(bound.Normal.X(),bound.Normal.Y(),bound.Normal.Z()),
-                                                                                angleDegTil=tiltAngle(bound.Normal.X(),bound.Normal.Y(),bound.Normal.Z()),
-                                                                                adjZoneSide1=side1,
-                                                                                adjZoneSide2=side2,
-                                                                                width=bound.Width,
-                                                                                height=bound.Height,
-                                                                                areaNet=bound.Area,
-                                                                                thickness=bound.thickness[0],
-                                                                                constructionData=treatedCon[BuildingElementToMaterialLayerSet[bound.RelatedBuildingElement]],
-                                                                                mesh=DataClasses.Mesh(bound.Face),
-                                                                                includedWindows=includedWindows,
-                                                                                includedDoors=includedDoors))
-                        iwa = iwa + 1
+                    ## Walls
+                    if bound.RelatedBuildingElement in WallInfo.keys() and bound.thickness[0] > 0.0:
+                        iel = iel + 1
+                        iwaz = iwaz + 1
+                        if bound.OtherSideBoundary not in treatedBuildingEle.keys():
+                            treatedBuildingEle[bound.Id] = "wall_"+str(iwa)
+                            includedWindows = []
+                            includedDoors = []
+                            for b in space.Boundaries:
+                                if b.Id in bound.IncludedBoundariesIds:
+                                    if b.RelatedBuildingElement in WindowToStyle.keys():
+                                        includedWindows.append((b.Width,b.Height))
+                                    if b.RelatedBuildingElement in DoorToStyle.keys():
+                                        includedDoors.append((b.Width,b.Height))
+                            buildingData.addOpaqueElement(bdm.BuildingElementOpaque(id=bound.Id,
+                                                                                    name="wall_"+str(iwa),
+                                                                                    pos=(bound.Position.X(),bound.Position.Y(),bound.Position.Z()),
+                                                                                    angleDegAzi=azimuthAngle(bound.Normal.X(),bound.Normal.Y(),bound.Normal.Z()),
+                                                                                    angleDegTil=tiltAngle(bound.Normal.X(),bound.Normal.Y(),bound.Normal.Z()),
+                                                                                    adjZoneSide1=side1,
+                                                                                    adjZoneSide2=side2,
+                                                                                    width=bound.Width,
+                                                                                    height=bound.Height,
+                                                                                    areaNet=bound.Area,
+                                                                                    thickness=bound.thickness[0],
+                                                                                    constructionData=treatedCon[BuildingElementToMaterialLayerSet[bound.RelatedBuildingElement]],
+                                                                                    mesh=DataClasses.Mesh(bound.Face),
+                                                                                    includedWindows=includedWindows,
+                                                                                    includedDoors=includedDoors))
+                            iwa = iwa + 1
 
-                ## Slabs
-                if bound.RelatedBuildingElement in SlabsInfo.keys() and tiltAngle(bound.Normal.X(),bound.Normal.Y(),bound.Normal.Z()) in [0.0,180.0]:
-                    iel = iel + 1
-                    islz = islz + 1
-                    if bound.OtherSideBoundary not in treatedBuildingEle.keys():
-                        treatedBuildingEle[bound.Id] = "slab_"+str(isl)
-                        if bound.Position.Z() > heightMax:
-                            heightMax = bound.Position.Z()
-                        if bound.Position.Z() < heightMin:
-                            heightMin = bound.Position.Z()
-                        buildingData.addOpaqueElement(bdm.BuildingElementOpaque(id=bound.Id,
+                    ## Slabs
+                    if bound.RelatedBuildingElement in SlabsInfo.keys() and tiltAngle(bound.Normal.X(),bound.Normal.Y(),bound.Normal.Z()) in [0.0,180.0]:
+                        iel = iel + 1
+                        islz = islz + 1
+                        if bound.OtherSideBoundary not in treatedBuildingEle.keys():
+                            treatedBuildingEle[bound.Id] = "slab_"+str(isl)
+                            if bound.Position.Z() > heightMax:
+                                heightMax = bound.Position.Z()
+                            if bound.Position.Z() < heightMin:
+                                heightMin = bound.Position.Z()
+                            buildingData.addOpaqueElement(bdm.BuildingElementOpaque(id=bound.Id,
                                                                                 name="slab_"+str(isl),
                                                                                 pos=(bound.Position.X(),bound.Position.Y(),bound.Position.Z()),
                                                                                 angleDegAzi=azimuthAngle(bound.Normal.X(),bound.Normal.Y(),bound.Normal.Z()),
@@ -378,56 +387,58 @@ def mapIFCtoBuildingDataModel(file,filename):
                                                                                 mesh=DataClasses.Mesh(bound.Face),
                                                                                 includedWindows=[],
                                                                                 includedDoors=[]))
-                        isl = isl + 1
+                            isl = isl + 1
 
-                ## Doors
-                if bound.RelatedBuildingElement in DoorToStyle.keys():
-                    iel = iel + 1
-                    idoz = idoz + 1
-                    if bound.OtherSideBoundary not in treatedBuildingEle.keys():
-                        mesh=DataClasses.Mesh(bound.Face)
-                        treatedBuildingEle[bound.Id] = "door_"+str(ido)
-                        buildingData.addDoorElement(bdm.BuildingElementDoor(id=bound.Id,
-                                                                            name="door_"+str(ido),
-                                                                            pos=(bound.Position.X(),bound.Position.Y(),bound.Position.Z()),
-                                                                            angleDegAzi=azimuthAngle(bound.Normal.X(),bound.Normal.Y(),bound.Normal.Z()),
-                                                                            angleDegTil=tiltAngle(bound.Normal.X(),bound.Normal.Y(),bound.Normal.Z()),
-                                                                            adjZoneSide1=side1,
-                                                                            adjZoneSide2=side2,
-                                                                            width=bound.Width,
-                                                                            height=bound.Height,
-                                                                            areaNet=bound.Area,
-                                                                            thickness=bound.thickness[0],
-                                                                            constructionData="Construction1",
-                                                                            mesh=DataClasses.Mesh(bound.Face)))
-                        ido = ido + 1
+                    ## Doors
+                    if bound.RelatedBuildingElement in DoorToStyle.keys():
+                        iel = iel + 1
+                        idoz = idoz + 1
+                        if bound.OtherSideBoundary not in treatedBuildingEle.keys():
+                            mesh=DataClasses.Mesh(bound.Face)
+                            treatedBuildingEle[bound.Id] = "door_"+str(ido)
+                            buildingData.addDoorElement(bdm.BuildingElementDoor(id=bound.Id,
+                                                                                name="door_"+str(ido),
+                                                                                pos=(bound.Position.X(),bound.Position.Y(),bound.Position.Z()),
+                                                                                angleDegAzi=azimuthAngle(bound.Normal.X(),bound.Normal.Y(),bound.Normal.Z()),
+                                                                                angleDegTil=tiltAngle(bound.Normal.X(),bound.Normal.Y(),bound.Normal.Z()),
+                                                                                adjZoneSide1=side1,
+                                                                                adjZoneSide2=side2,
+                                                                                width=bound.Width,
+                                                                                height=bound.Height,
+                                                                                areaNet=bound.Area,
+                                                                                thickness=bound.thickness[0],
+                                                                                constructionData="Construction1",
+                                                                                mesh=DataClasses.Mesh(bound.Face)))
+                            ido = ido + 1
 
-                ## Transparent elements
-                if bound.RelatedBuildingElement in WindowToStyle.keys():
-                    iel = iel + 1
-                    iwiz = iwiz + 1
-                    if bound.OtherSideBoundary not in treatedBuildingEle.keys():
-                        mesh=DataClasses.Mesh(bound.Face)
-                        treatedBuildingEle[bound.Id] = "window_"+str(iwi)
-                        buildingData.addTransparentElement(bdm.BuildingElementTransparent(id=bound.Id,
-                                                                                          name="window_"+str(iwi),
-                                                                                          pos=(bound.Position.X(),bound.Position.Y(),bound.Position.Z()),
-                                                                                          angleDegAzi=azimuthAngle(bound.Normal.X(),bound.Normal.Y(),bound.Normal.Z()),
-                                                                                          angleDegTil=tiltAngle(bound.Normal.X(),bound.Normal.Y(),bound.Normal.Z()),
-                                                                                          adjZoneSide1=side1,
-                                                                                          adjZoneSide2=side2,
-                                                                                          width=bound.Width,
-                                                                                          height=bound.Height,
-                                                                                          areaNet=bound.Area,
-                                                                                          thickness=bound.thickness[0],
-                                                                                          mesh=DataClasses.Mesh(bound.Face)))
-                        iwi = iwi + 1
+                    ## Transparent elements
+                    if bound.RelatedBuildingElement in WindowToStyle.keys():
+                        iel = iel + 1
+                        iwiz = iwiz + 1
+                        if bound.OtherSideBoundary not in treatedBuildingEle.keys():
+                            mesh=DataClasses.Mesh(bound.Face)
+                            treatedBuildingEle[bound.Id] = "window_"+str(iwi)
+                            buildingData.addTransparentElement(bdm.BuildingElementTransparent(id=bound.Id,
+                                                                                              name="window_"+str(iwi),
+                                                                                              pos=(bound.Position.X(),bound.Position.Y(),bound.Position.Z()),
+                                                                                              angleDegAzi=azimuthAngle(bound.Normal.X(),bound.Normal.Y(),bound.Normal.Z()),
+                                                                                              angleDegTil=tiltAngle(bound.Normal.X(),bound.Normal.Y(),bound.Normal.Z()),
+                                                                                              adjZoneSide1=side1,
+                                                                                              adjZoneSide2=side2,
+                                                                                              width=bound.Width,
+                                                                                              height=bound.Height,
+                                                                                              areaNet=bound.Area,
+                                                                                              thickness=bound.thickness[0],
+                                                                                              mesh=DataClasses.Mesh(bound.Face)))
+                            iwi = iwi + 1
+
+            volume += space.Volume
 
         ## Thermal zones
-        buildingData.addZone(bdm.BuildingZone(id=space.Space.GlobalId,
-                                              name=treatedZones[space.Space.GlobalId],
+        buildingData.addZone(bdm.BuildingZone(id=zone.GlobalId,
+                                              name=zone.Name,
                                               pos=(0.0,0.0,0.0),
-                                              volume=space.Volume,
+                                              volume=volume,
                                               height=abs(heightMax-heightMin),
                                               numberOfElements=iel,
                                               numberOfWalls=iwaz,

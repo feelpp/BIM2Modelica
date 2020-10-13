@@ -263,8 +263,9 @@ def mapIFCtoBuildingDataModel(file,filename):
             for rd in s.IsDefinedBy:
                 if rd.is_a("IfcRelDefinesByType") and rd.RelatingType.HasPropertySets:
                     for ps in rd.RelatingType.HasPropertySets:
-                        browsePropertySet(ps, mat)
-                elif rd.is_a("IfcRelDefinesByProperties"):
+                        if ps.is_a("ifcpropertyset"):
+                            browsePropertySet(ps, mat)
+                elif rd.is_a("IfcRelDefinesByProperties") and rd.RelatingPropertyDefinition.is_a("ifcpropertyset"):
                     browsePropertySet(rd.RelatingPropertyDefinition, mat)
             if mat in props and props[mat]:
                 break
@@ -295,22 +296,27 @@ def mapIFCtoBuildingDataModel(file,filename):
     treatedBuildingEle = {}
     treatedZones = {}
 
+    Spaces2 = {s.Space.GlobalId : s for s in Spaces}
+
     ## Thermal zones
     # izo = 1
     for space in Spaces:
         treatedZones[space.Space.GlobalId] = space.Space.LongName+"_"+ str(space.Space.Name) #str(izo)
     #     izo = izo + 1
     zone_for_space = {}
+    spaces_for_zone = {}
     for z in file.by_type("IfcZone"):
+        spaces_for_zone[z] = []
         for ratg in z.IsGroupedBy:
             for s in ratg.RelatedObjects:
                 zone_for_space[s.GlobalId] = z
+                spaces_for_zone[z].append(Spaces2[s.GlobalId])
 
     iwa = 1
     isl = 1
     ido = 1
     iwi = 1
-    for zone in file.by_type("IfcZone"):
+    for zone, spaces in spaces_for_zone.items():
         volume = 0
         iel=0
         iwaz = 0
@@ -319,15 +325,16 @@ def mapIFCtoBuildingDataModel(file,filename):
         iwiz = 0
         heightMin = 0.0
         heightMax = 0.0
-        for space in Spaces:
+        zone_name = zone.Name.split(':')[0]
+        for space in spaces:
             ## Construction elements
             for bound in space.Boundaries:
                 if bound.OtherSideSpace in treatedZones.keys() or bound.OtherSideSpace == "EXTERNAL":
-                    side1 = zone.Name
+                    side1 = zone_name
                     if bound.OtherSideSpace == "EXTERNAL":
                         side2 = "AMB"
                     elif zone_for_space[bound.OtherSideSpace] != zone:
-                        side2 = zone_for_space[bound.OtherSideSpace].Name
+                        side2 = zone_for_space[bound.OtherSideSpace].Name.split(':')[0]
                     else:
                         continue
 
@@ -373,20 +380,20 @@ def mapIFCtoBuildingDataModel(file,filename):
                             if bound.Position.Z() < heightMin:
                                 heightMin = bound.Position.Z()
                             buildingData.addOpaqueElement(bdm.BuildingElementOpaque(id=bound.Id,
-                                                                                name="slab_"+str(isl),
-                                                                                pos=(bound.Position.X(),bound.Position.Y(),bound.Position.Z()),
-                                                                                angleDegAzi=azimuthAngle(bound.Normal.X(),bound.Normal.Y(),bound.Normal.Z()),
-                                                                                angleDegTil=tiltAngle(bound.Normal.X(),bound.Normal.Y(),bound.Normal.Z()),
-                                                                                adjZoneSide1=side1,
-                                                                                adjZoneSide2=side2,
-                                                                                width=bound.Width,
-                                                                                height=bound.Height,
-                                                                                areaNet=bound.Area,
-                                                                                thickness=bound.thickness[0],
-                                                                                constructionData=treatedCon[BuildingElementToMaterialLayerSet[bound.RelatedBuildingElement]],
-                                                                                mesh=DataClasses.Mesh(bound.Face),
-                                                                                includedWindows=[],
-                                                                                includedDoors=[]))
+                                                                                    name="slab_"+str(isl),
+                                                                                    pos=(bound.Position.X(),bound.Position.Y(),bound.Position.Z()),
+                                                                                    angleDegAzi=azimuthAngle(bound.Normal.X(),bound.Normal.Y(),bound.Normal.Z()),
+                                                                                    angleDegTil=tiltAngle(bound.Normal.X(),bound.Normal.Y(),bound.Normal.Z()),
+                                                                                    adjZoneSide1=side1,
+                                                                                    adjZoneSide2=side2,
+                                                                                    width=bound.Width,
+                                                                                    height=bound.Height,
+                                                                                    areaNet=bound.Area,
+                                                                                    thickness=bound.thickness[0],
+                                                                                    constructionData=treatedCon[BuildingElementToMaterialLayerSet[bound.RelatedBuildingElement]],
+                                                                                    mesh=DataClasses.Mesh(bound.Face),
+                                                                                    includedWindows=[],
+                                                                                    includedDoors=[]))
                             isl = isl + 1
 
                     ## Doors
@@ -436,7 +443,7 @@ def mapIFCtoBuildingDataModel(file,filename):
 
         ## Thermal zones
         buildingData.addZone(bdm.BuildingZone(id=zone.GlobalId,
-                                              name=zone.Name,
+                                              name=zone_name,
                                               pos=(0.0,0.0,0.0),
                                               volume=volume,
                                               height=abs(heightMax-heightMin),

@@ -1,4 +1,11 @@
 ## Classes for storing the information of the building model instances
+class Material:
+    def __init__(self, name, density=1000, capacity=1000, conductivity=1):
+        self.name = name
+        self.density = density
+        self.capacity = capacity
+        self.conductivity = conductivity
+
 class Construction:
     def __init__(self, name, nLayers = 1, thickness = [], material = []):
         self.name = name

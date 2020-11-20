@@ -22,15 +22,15 @@ class Material:
 
     def __init__(self, name='', **kwargs):
         self.name = name
-        self.density = None
-        self.capacity = None
-        self.conductivity = None
+        self.density = 650 # default density
+        self.capacity = 850 # default capacity
+        self.conductivity = 0.18 # default conductivity
         self.setParameter(**kwargs)
 
     def setParameter(self, **kwargs):
         if kwargs is not None:
             for k in kwargs:
-                if k in Material.att:
+                if k in Material.att and kwargs[k]:
                     setattr(self, k, kwargs[k])
                 else:
                     raise TypeError(k, 'is an unknown parameter')
@@ -213,7 +213,8 @@ class Building:
            'width',
            'heightSto',
            'nSto',
-           'thermalLoads')
+           'thermalLoads',
+           'materials')
 
     def __init__(self, id='', name='', pos=(0.0, 0.0, 0.0), **kwargs):
         self.id = str(id)
@@ -242,6 +243,7 @@ class Building:
         self.heightSto = None
         self.nSto = None
         self.thermalLoads = None
+        self.materials = []
         self.setParameter(**kwargs)
 
     def addOriginalWall(self, originalWall):
@@ -258,6 +260,9 @@ class Building:
 
     def addConstruction(self, construction):
         self.constructions.append(construction)
+
+    def addMaterial(self, material):
+        self.materials.append(material)
 
     def addZone(self, zone):
         self.zones.append(zone)
@@ -308,6 +313,8 @@ class Building:
                 return self.doorElements
             if value == 'constructions':
                 return self.constructions
+            if value == 'materials':
+                return self.materials
             # 0D modelling approach
             if value == 'UValFac':
                 if self.UValFac is None:

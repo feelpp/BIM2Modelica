@@ -34,6 +34,16 @@ model ${data['buildingSystem'].name}
   "Model of a building with its climate ambience"
   extends Modelica.Icons.Example;
 
+  %for mat in data['materials']:
+  record ${mat.name}
+    extends BuildingSystems.HAM.Data.MaterialProperties.BaseClasses.MaterialThermalGeneral(
+      lambda=${mat.conductivity},
+      rho=${mat.density},
+      c=${mat.capacity}
+      );
+  end ${mat.name};
+  %endfor
+
   % for con in data['constructions']:
   record ${con.name}
     extends BuildingSystems.Buildings.Data.Constructions.OpaqueThermalConstruction(

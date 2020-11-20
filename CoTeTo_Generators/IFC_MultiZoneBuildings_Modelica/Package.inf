@@ -48,12 +48,12 @@ topFile = PhysicalModel.mot
 type = mako
 ext = .mo
 
-[TEMPLATE_UNITY_STATE_VARIABLES]
-topFile = StateVariables.unt
-type = mako
-ext = _StateVariables.cs
+; [TEMPLATE_UNITY_STATE_VARIABLES]
+; topFile = StateVariables.unt
+; type = mako
+; ext = _StateVariables.cs
 
-[TEMPLATE_UNITY_BUILDING_MODEL]
-topFile = BuildingModel.unt
-type = mako
-ext = _BuildingModel.cs
+; [TEMPLATE_UNITY_BUILDING_MODEL]
+; topFile = BuildingModel.unt
+; type = mako
+; ext = _BuildingModel.cs

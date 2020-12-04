@@ -313,7 +313,7 @@ def RelatedElementsWalls(Spaces, ifc_file, WallInfo, SlabsInfo):
     # Nothing is done so far.
     # But it might be possible to redefine the space, at least its boundary.
     for sp in Spaces:
-        print("Space: ", sp.Space.GlobalId)
+        print("Space: ", sp.Space.Name)
         RelatedWall = {}
         RelatedSlab = {}
         space_volume = ifcopenshell.geom.create_shape(settings, sp.Space).geometry

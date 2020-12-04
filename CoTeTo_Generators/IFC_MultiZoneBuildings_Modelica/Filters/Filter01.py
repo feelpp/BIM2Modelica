@@ -304,8 +304,8 @@ def mapIFCtoBuildingDataModel(file,filename):
         treatedZones[space.Space.GlobalId] = space.Space.LongName+"_"+ str(space.Space.Name)
     if not file.by_type("ifczone"):
         for space in Spaces:
-            spaces_for_zone[space.Space] = [space.Space.GlobaleId]
-            zone_for_space[space.Space.GlobalID] = space.Space
+            spaces_for_zone[space.Space] = [Spaces2[space.Space.GlobalId]]
+            zone_for_space[space.Space.GlobalId] = space.Space
     else:
         for z in file.by_type("IfcZone"):
             spaces_for_zone[z] = []

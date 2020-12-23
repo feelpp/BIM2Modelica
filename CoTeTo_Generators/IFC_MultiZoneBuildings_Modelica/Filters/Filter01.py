@@ -8,6 +8,7 @@ import libdm.DataModelGenerator as dmg
 import IfcLib.Ifc2x3Lib as ifcLib
 from IfcLib import DataClasses
 import math
+from numpy import mean
 import re
 import os
 
@@ -451,15 +452,15 @@ def mapIFCtoBuildingDataModel(file,filename):
             iel = iel + 1
             if related_element in WallInfo.keys():
                 iwaz = iwaz + 1
-            else:
-                islz = islz + 1
-            if len(opaque_elements) == 1:
-                buildingData.addOpaqueElement(opaque_elements[0])
-            else:
+                # if len(opaque_elements) == 1:
+                #     buildingData.addOpaqueElement(opaque_elements[0])
+                # else:
                 posX = min([x.pos.X() for x in opaque_elements])
                 posY = min([x.pos.Y() for x in opaque_elements])
                 posZ = min([x.pos.Z() for x in opaque_elements])
                 areaNet = sum([x.areaNet for x in opaque_elements])
+                height = mean([x.height for x in opaque_elements])
+                width = sum([x.width for x in opaque_elements])
                 angleDegAzi = sum([x.areaNet*x.angleDegAzi for x in opaque_elements])/areaNet
                 angleDegTil = sum([x.areaNet*x.angleDegTil for x in opaque_elements])/areaNet
                 includedWindows = sum([x.includedWindows for x in opaque_elements], [])
@@ -471,8 +472,37 @@ def mapIFCtoBuildingDataModel(file,filename):
                                                                         angleDegTil=angleDegTil,
                                                                         adjZoneSide1=zone_name,
                                                                         adjZoneSide2=side2,
-                                                                        # width=opaque_elements[0].width,
-                                                                        # height=opaque_elements[0].height,
+                                                                        height=height,
+                                                                        width=width,
+                                                                        # width=areaNet,
+                                                                        # height=1,
+                                                                        areaNet=areaNet,
+                                                                        thickness=opaque_elements[0].thickness,
+                                                                        constructionData=opaque_elements[0].constructionData,
+                                                                        mesh=opaque_elements[0].mesh,
+                                                                        includedWindows=includedWindows,
+                                                                        includedDoors=includedDoors))
+            else:
+                islz = islz + 1
+                posX = min([x.pos.X() for x in opaque_elements])
+                posY = min([x.pos.Y() for x in opaque_elements])
+                posZ = min([x.pos.Z() for x in opaque_elements])
+                areaNet = sum([x.areaNet for x in opaque_elements])
+                height = mean([x.height for x in opaque_elements])
+                width = sum([x.width for x in opaque_elements])
+                angleDegAzi = sum([x.areaNet*x.angleDegAzi for x in opaque_elements])/areaNet
+                angleDegTil = sum([x.areaNet*x.angleDegTil for x in opaque_elements])/areaNet
+                includedWindows = sum([x.includedWindows for x in opaque_elements], [])
+                includedDoors = sum([x.includedDoors for x in opaque_elements], [])
+                buildingData.addOpaqueElement(bdm.BuildingElementOpaque(id=opaque_elements[0].id,
+                                                                        name=opaque_elements[0].name,
+                                                                        pos=(posX, posY, posZ),
+                                                                        angleDegAzi=angleDegAzi,
+                                                                        angleDegTil=angleDegTil,
+                                                                        adjZoneSide1=zone_name,
+                                                                        adjZoneSide2=side2,
+                                                                        # height=height,
+                                                                        # width=width,
                                                                         width=areaNet,
                                                                         height=1,
                                                                         areaNet=areaNet,
@@ -481,6 +511,7 @@ def mapIFCtoBuildingDataModel(file,filename):
                                                                         mesh=opaque_elements[0].mesh,
                                                                         includedWindows=includedWindows,
                                                                         includedDoors=includedDoors))
+            
         bounds_by_zone.clear()
 
         ## Thermal zones
@@ -531,8 +562,8 @@ def getGeneratorData(buildingData):
                               nSlabs=zone.numberOfSlabs,
                               nDoors=zone.numberOfDoors,
                               nWindows=zone.numberOfWindows,
-                              volume=zone.volume,
-                              height=zone.height,
+                              volume=round(zone.volume,3),
+                              height=round(zone.height,3),
                               TSetHeating=zone.TSetHeating,
                               TSetCooling=zone.TSetCooling,
                               airchange=zone.airchange,
@@ -544,28 +575,27 @@ def getGeneratorData(buildingData):
         elementsOpaque.append(dmg.ElementOpaque(name=eleOpa.name,
                                                 pos=(eleOpa.pos.X(),eleOpa.pos.Y(),eleOpa.pos.Z()),
                                                 memberOfZone=[eleOpa.adjZoneSide1,eleOpa.adjZoneSide2],
-                                                angleDegAzi=eleOpa.angleDegAzi,
-                                                angleDegTil=eleOpa.angleDegTil,
-                                                height=eleOpa.height,
-                                                width=eleOpa.width,
-                                                thickness=eleOpa.thickness,
+                                                angleDegAzi=round(eleOpa.angleDegAzi,3),
+                                                angleDegTil=round(eleOpa.angleDegTil,3),
+                                                height=round(eleOpa.height,3),
+                                                width=round(eleOpa.width,3),
+                                                thickness=round(eleOpa.thickness,3),
                                                 mesh=eleOpa.mesh,
                                                 constructionData=eleOpa.constructionData,
-                                                AInnSur=round(eleOpa.width*eleOpa.height-eleOpa.areaNet,3),
+                                                AInnSur=round(round(eleOpa.width*eleOpa.height, 3)-round(eleOpa.areaNet,3), 3),
                                                 includedWindows=eleOpa.includedWindows,
                                                 includedDoors=eleOpa.includedDoors))
-
     ## Transparent elements
     elementsTransparent = []
     for eleTra in buildingData.getParameter('transparentElements'):
         elementsTransparent.append(dmg.ElementTransparent(name=eleTra.name,
                                                           pos=(eleTra.pos.X(),eleTra.pos.Y(),eleTra.pos.Z()),
                                                           memberOfZone=[eleTra.adjZoneSide1,eleTra.adjZoneSide2],
-                                                          angleDegAzi=eleTra.angleDegAzi,
-                                                          angleDegTil=eleTra.angleDegTil,
-                                                          height=eleTra.height,
-                                                          width=eleTra.width,
-                                                          thickness=eleTra.thickness,
+                                                          angleDegAzi=round(eleTra.angleDegAzi,3),
+                                                          angleDegTil=round(eleTra.angleDegTil,3),
+                                                          height=round(eleTra.height,3),
+                                                          width=round(eleTra.width,3),
+                                                          thickness=round(eleTra.thickness,3),
                                                           mesh=eleTra.mesh))
 
     ## Door elements
@@ -574,11 +604,11 @@ def getGeneratorData(buildingData):
         elementsDoor.append(dmg.ElementDoor(name=eleDoo.name,
                                             pos=(eleDoo.pos.X(),eleDoo.pos.Y(),eleDoo.pos.Z()),
                                             memberOfZone=[eleDoo.adjZoneSide1,eleDoo.adjZoneSide2],
-                                            angleDegAzi=eleDoo.angleDegAzi,
-                                            angleDegTil=eleDoo.angleDegTil,
-                                            height=eleDoo.height,
-                                            width=eleDoo.width,
-                                            thickness=eleDoo.thickness,
+                                            angleDegAzi=round(eleDoo.angleDegAzi,3),
+                                            angleDegTil=round(eleDoo.angleDegTil,3),
+                                            height=round(eleDoo.height,3),
+                                            width=round(eleDoo.width,3),
+                                            thickness=round(eleDoo.thickness,3),
                                             mesh=eleDoo.mesh,
                                             constructionData=eleDoo.constructionData,
                                             AInnSur=round(eleDoo.width*eleDoo.height-eleDoo.areaNet,3)))

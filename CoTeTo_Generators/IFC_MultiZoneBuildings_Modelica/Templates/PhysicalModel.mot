@@ -29,6 +29,9 @@ within;
 // calcIdealLoads = on: calculates the ideal heating and cooling loads for each
 // thermal zone for prescribed set temperatures:
 // used value: ${generatorCfg['MODELICA_CODE_SWITCHES'].get('calcIdealLoads')}
+//
+// calcThermalComfort = on: calculates thermal comfort for each thermal zone:
+// used value: ${generatorCfg['MODELICA_CODE_SWITCHES'].get('calcThermalComfort')}
 /***************************************************************************************/
 model ${data['buildingSystem'].name}
   "Model of a building with its climate ambience"
@@ -128,6 +131,11 @@ for ele in data['elementsDoor']:
       calcIdealLoads = true,
       % else:
       calcIdealLoads = false,
+      % endif
+      % if generatorCfg['MODELICA_CODE_SWITCHES'].getboolean('calcThermalComfort'):
+      calcThermalComfort = true,
+      % else:
+      calcThermalComfort = false,
       % endif
       % if generatorCfg['MODELICA_CODE_SWITCHES'].getboolean('prescribedAirchange'):
       prescribedAirchange = true,
@@ -330,7 +338,7 @@ for ele in data['elementsDoor']:
   % endfor
   % endif
   % if generatorCfg['MODELICA_CODE_SWITCHES'].getboolean('surTemOut'):
-  // Connections for surface temperatures
+    // Connections for surface temperatures
   <% i = 1 %>\
     % for ele in data['elementsOpaque']:
     connect(${ele.name}.TSur_1, TSur[${i}]);<% i = i + 1 %>

@@ -1172,7 +1172,9 @@ def BoundariesHeightWidth(Spaces, WindowToStyle, DoorToStyle, ifc_file):
                         edge_p.append(current_pnt)
                         exp_v.Next()
                     vec_w = OCC.Core.gp.gp_Vec(edge_p[0], edge_p[1])
-                    if abs(OCC.Core.gp.gp_Vec.Dot(vec_w, vec_)) <= 0.000001:
+                    # if abs(OCC.Core.gp.gp_Vec.Dot(vec_w, vec_)) <= 0.000001:
+                    #     Height = max(Height, vec_w.Magnitude())
+                    if  1.5359 <= OCC.Core.gp.gp_Vec.Angle(vec_w, vec_) <= 1.6057:
                         Height = max(Height, vec_w.Magnitude())
                     exp.Next()
                 boundary.Width = Width

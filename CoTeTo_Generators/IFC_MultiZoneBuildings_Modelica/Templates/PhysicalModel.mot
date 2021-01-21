@@ -102,12 +102,15 @@ for ele in data['elementsDoor']:
     % else:
     heatSources = false,
     % endif
-    convectionOnSurfaces = BuildingSystems.HAM.ConvectiveHeatTransfer.Types.Convection.forced);
+    convectionOnSurfaces = BuildingSystems.HAM.ConvectiveHeatTransfer.Types.Convection.const,
+    alphaConstant = 25);
 
     // Thermal zones
   % for zone in data['zones']:
     BuildingSystems.Buildings.Zones.ZoneTemplateAirvolumeMixed ${zone.name}(
       V=${zone.volume},
+      convectionOnSurfaces = BuildingSystems.HAM.ConvectiveHeatTransfer.Types.Convection.const,
+      alphaConstant = 7.5,
       nConstructions = ${zone.nElements},
       % if generatorCfg['MODELICA_CODE_SWITCHES'].getboolean('useAirPaths'):
 <%
@@ -134,6 +137,10 @@ for ele in data['elementsDoor']:
       % endif
       % if generatorCfg['MODELICA_CODE_SWITCHES'].getboolean('calcThermalComfort'):
       calcThermalComfort = true,
+      clo = 0.5, 
+      met = 1.2,
+      wme = 0.0,
+      vAir = 0.1,
       % else:
       calcThermalComfort = false,
       % endif

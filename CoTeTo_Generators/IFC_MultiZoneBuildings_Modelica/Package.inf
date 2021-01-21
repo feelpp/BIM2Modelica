@@ -20,7 +20,7 @@ function = filter01
 # Modelica code generator
 [MODELICA_CODE_SWITCHES]
 # Set surface temperatures as an output of the building model: surTemOut = on
-surTemOut = on
+surTemOut = off
 # Set internal heat sources for all thermal zones: intHeaSou = on
 intHeaSou = on
 # Uses air paths of the windows and doors to calculate the ventilation rates: useAirPaths = on

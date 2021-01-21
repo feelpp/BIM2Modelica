@@ -56,6 +56,7 @@ def mapIFCtoBuildingDataModel(file,filename):
     originalWalls = []
     walls = []
     walls_decomposed = []
+    
     for w in all_walls:
         shape_tup = ifcopenshell.geom.create_shape(settings, w)
         toposhape = shape_tup.geometry
@@ -299,14 +300,26 @@ def mapIFCtoBuildingDataModel(file,filename):
     zone_for_space = {}
     spaces_for_zone = {}
     Spaces2 = {s.Space.GlobalId : s for s in Spaces}
-
+    
     ## Thermal zones
     for space in Spaces:
         treatedZones[space.Space.GlobalId] = space.Space.LongName+"_"+ str(space.Space.Name)
+          
     if not file.by_type("ifczone"):
+        print("Thermal zones are not specified. Each space will be treated as a single thermal zone")
+        ns = 1
         for space in Spaces:
+            if "Zone_" not in space.Space.Name:
+                print('Space ',space.Space.Name,' will be renamed as ',"Zone_"+str(ns),' to meet requirement')
+                space.Space.Name = "Zone_"+str(ns)
+
+            treatedZones[space.Space.GlobalId] = space.Space.Name
+            
             spaces_for_zone[space.Space] = [Spaces2[space.Space.GlobalId]]
             zone_for_space[space.Space.GlobalId] = space.Space
+
+            ns = ns + 1
+       
     else:
         for z in file.by_type("IfcZone"):
             spaces_for_zone[z] = []
@@ -314,6 +327,7 @@ def mapIFCtoBuildingDataModel(file,filename):
                 for s in ratg.RelatedObjects:
                     zone_for_space[s.GlobalId] = z
                     spaces_for_zone[z].append(Spaces2[s.GlobalId])
+
 
     # print(black_list)
     iwa = 1
@@ -323,7 +337,7 @@ def mapIFCtoBuildingDataModel(file,filename):
     bounds_by_zone = {}
     for zone, spaces in spaces_for_zone.items():
         volume = 0
-        iel=0
+        iel = 0
         iwaz = 0
         islz = 0
         idoz = 0
@@ -344,7 +358,6 @@ def mapIFCtoBuildingDataModel(file,filename):
                     else:
                         # if other side in same zone, discard boundary
                         continue
-
                     ## Walls
                     if bound.RelatedBuildingElement in WallInfo.keys() and bound.thickness[0] > 0.0:
                         if bound.OtherSideBoundary not in treatedBuildingEle.keys():
@@ -374,6 +387,8 @@ def mapIFCtoBuildingDataModel(file,filename):
                                                                        includedDoors=includedDoors)
                             bounds_by_zone.setdefault((bound.RelatedBuildingElement, side2), []).append(opaque_element)
                             iwa = iwa + 1
+                        else:
+                            iel = iel + 1
 
                     ## Slabs
                     if bound.RelatedBuildingElement in SlabsInfo.keys() and tiltAngle(bound.Normal.X(),bound.Normal.Y(),bound.Normal.Z()) in [0.0,180.0]:
@@ -400,6 +415,8 @@ def mapIFCtoBuildingDataModel(file,filename):
                                                                        includedDoors=[])
                             bounds_by_zone.setdefault((bound.RelatedBuildingElement, side2), []).append(opaque_element)
                             isl = isl + 1
+                        else:
+                            iel = iel + 1
 
                     ## Doors
                     if bound.RelatedBuildingElement in DoorToStyle.keys():
@@ -446,72 +463,44 @@ def mapIFCtoBuildingDataModel(file,filename):
 
             volume += space.Volume
 
-
         for related_element, side2 in bounds_by_zone:
             opaque_elements = bounds_by_zone[(related_element, side2)]
             iel = iel + 1
+
             if related_element in WallInfo.keys():
                 iwaz = iwaz + 1
-                # if len(opaque_elements) == 1:
-                #     buildingData.addOpaqueElement(opaque_elements[0])
-                # else:
-                posX = min([x.pos.X() for x in opaque_elements])
-                posY = min([x.pos.Y() for x in opaque_elements])
-                posZ = min([x.pos.Z() for x in opaque_elements])
-                areaNet = sum([x.areaNet for x in opaque_elements])
-                height = mean([x.height for x in opaque_elements])
-                width = sum([x.width for x in opaque_elements])
-                angleDegAzi = sum([x.areaNet*x.angleDegAzi for x in opaque_elements])/areaNet
-                angleDegTil = sum([x.areaNet*x.angleDegTil for x in opaque_elements])/areaNet
-                includedWindows = sum([x.includedWindows for x in opaque_elements], [])
-                includedDoors = sum([x.includedDoors for x in opaque_elements], [])
-                buildingData.addOpaqueElement(bdm.BuildingElementOpaque(id=opaque_elements[0].id,
-                                                                        name=opaque_elements[0].name,
-                                                                        pos=(posX, posY, posZ),
-                                                                        angleDegAzi=angleDegAzi,
-                                                                        angleDegTil=angleDegTil,
-                                                                        adjZoneSide1=zone_name,
-                                                                        adjZoneSide2=side2,
-                                                                        height=height,
-                                                                        width=width,
-                                                                        # width=areaNet,
-                                                                        # height=1,
-                                                                        areaNet=areaNet,
-                                                                        thickness=opaque_elements[0].thickness,
-                                                                        constructionData=opaque_elements[0].constructionData,
-                                                                        mesh=opaque_elements[0].mesh,
-                                                                        includedWindows=includedWindows,
-                                                                        includedDoors=includedDoors))
             else:
                 islz = islz + 1
-                posX = min([x.pos.X() for x in opaque_elements])
-                posY = min([x.pos.Y() for x in opaque_elements])
-                posZ = min([x.pos.Z() for x in opaque_elements])
-                areaNet = sum([x.areaNet for x in opaque_elements])
-                height = mean([x.height for x in opaque_elements])
-                width = sum([x.width for x in opaque_elements])
-                angleDegAzi = sum([x.areaNet*x.angleDegAzi for x in opaque_elements])/areaNet
-                angleDegTil = sum([x.areaNet*x.angleDegTil for x in opaque_elements])/areaNet
-                includedWindows = sum([x.includedWindows for x in opaque_elements], [])
-                includedDoors = sum([x.includedDoors for x in opaque_elements], [])
-                buildingData.addOpaqueElement(bdm.BuildingElementOpaque(id=opaque_elements[0].id,
-                                                                        name=opaque_elements[0].name,
-                                                                        pos=(posX, posY, posZ),
-                                                                        angleDegAzi=angleDegAzi,
-                                                                        angleDegTil=angleDegTil,
-                                                                        adjZoneSide1=zone_name,
-                                                                        adjZoneSide2=side2,
-                                                                        # height=height,
-                                                                        # width=width,
-                                                                        width=areaNet,
-                                                                        height=1,
-                                                                        areaNet=areaNet,
-                                                                        thickness=opaque_elements[0].thickness,
-                                                                        constructionData=opaque_elements[0].constructionData,
-                                                                        mesh=opaque_elements[0].mesh,
-                                                                        includedWindows=includedWindows,
-                                                                        includedDoors=includedDoors))
-            
+
+            posX = min([x.pos.X() for x in opaque_elements])
+            posY = min([x.pos.Y() for x in opaque_elements])
+            posZ = min([x.pos.Z() for x in opaque_elements])
+            areaNet = sum([x.areaNet for x in opaque_elements])
+            height = mean([x.height for x in opaque_elements])
+            width = sum([x.width for x in opaque_elements])
+            angleDegAzi = sum([x.areaNet*x.angleDegAzi for x in opaque_elements])/areaNet
+            angleDegTil = sum([x.areaNet*x.angleDegTil for x in opaque_elements])/areaNet
+            includedWindows = sum([x.includedWindows for x in opaque_elements], [])
+            includedDoors = sum([x.includedDoors for x in opaque_elements], [])
+            buildingData.addOpaqueElement(bdm.BuildingElementOpaque(id=opaque_elements[0].id,
+                                                                    name=opaque_elements[0].name,
+                                                                    pos=(posX, posY, posZ),
+                                                                    angleDegAzi=angleDegAzi,
+                                                                    angleDegTil=angleDegTil,
+                                                                    adjZoneSide1=zone_name,
+                                                                    adjZoneSide2=side2,
+                                                                    # height=height,
+                                                                    # width=width,
+                                                                    width=areaNet,
+                                                                    height=1,
+                                                                    areaNet=areaNet,
+                                                                    thickness=opaque_elements[0].thickness,
+                                                                    constructionData=opaque_elements[0].constructionData,
+                                                                    mesh=opaque_elements[0].mesh,
+                                                                    includedWindows=includedWindows,
+                                                                    includedDoors=includedDoors))
+        
+        
         bounds_by_zone.clear()
 
         ## Thermal zones
@@ -528,8 +517,9 @@ def mapIFCtoBuildingDataModel(file,filename):
                                               TSetHeating=20.0,
                                               TSetCooling=24.0,
                                               airchange=0.5,
-                                              thermalLoads=0.0))
+                                              thermalLoads=0.0))        
     return buildingData
+    
 
 def getGeneratorData(buildingData):
     '''
@@ -582,7 +572,7 @@ def getGeneratorData(buildingData):
                                                 thickness=round(eleOpa.thickness,3),
                                                 mesh=eleOpa.mesh,
                                                 constructionData=eleOpa.constructionData,
-                                                AInnSur=round(round(eleOpa.width*eleOpa.height, 3)-round(eleOpa.areaNet,3), 3),
+                                                AInnSur=round(sum(x[0]*x[1] for x in eleOpa.includedWindows)+sum(y[0]*y[1] for y in eleOpa.includedDoors),3),
                                                 includedWindows=eleOpa.includedWindows,
                                                 includedDoors=eleOpa.includedDoors))
     ## Transparent elements

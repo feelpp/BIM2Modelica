@@ -23,6 +23,8 @@ function = filter01
 surTemOut = off
 # Set internal heat sources for all thermal zones: intHeaSou = on
 intHeaSou = on
+# Set internal moisture sources for all thermal zones: intMoistSou = on
+intMoistSou = on
 # Uses air paths of the windows and doors to calculate the ventilation rates: useAirPaths = on
 useAirPaths = off
 # Define the ventilation rate for each thermal zone as a prescribed air change rate: prescribedAirchange = on
@@ -31,13 +33,12 @@ prescribedAirchange = on
 calcIdealLoads = off
 # Calculate thermal comfort indices: calcThermalComfort = on
 calcThermalComfort = on
+# Hygrothermal simulation: calcHygroThermal = on
+calcHygroThermal = on
 [MODELICA_LIBPATHS]
 # Use of a libray path for the within statement: libPath = on
 libPath = on
 # Library pathes
-; ModelicaLibPath = ModelicaModels.IFC2X3.UdKB_Unit_Test_Cases
-; #ModelicaLibPath = ModelicaModels.IFC2X3.SBT_Unit_Test_Cases
-
 ModelicaLibPath = IbatModelicaModels.ApiB3Pieces
 
 [MODELICA_MOSPATHS]

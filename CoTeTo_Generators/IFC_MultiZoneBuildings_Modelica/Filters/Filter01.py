@@ -517,7 +517,8 @@ def mapIFCtoBuildingDataModel(file,filename):
                                               TSetHeating=20.0,
                                               TSetCooling=24.0,
                                               airchange=0.5,
-                                              thermalLoads=0.0))        
+                                              thermalLoads=0.0,
+                                              moistLoads=0.0))        
     return buildingData
     
 
@@ -557,7 +558,8 @@ def getGeneratorData(buildingData):
                               TSetHeating=zone.TSetHeating,
                               TSetCooling=zone.TSetCooling,
                               airchange=zone.airchange,
-                              heatsource=zone.thermalLoads))
+                              heatsource=zone.thermalLoads,
+                              moisturesource=zone.moistLoads))
 
     ## Opaque elements
     elementsOpaque = []

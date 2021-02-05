@@ -14,7 +14,7 @@ class Construction:
         self.material = material
 
 class Zone:
-    def __init__(self, name, pos, nElements, nWalls, nSlabs, nDoors, nWindows, volume, height, TSetHeating, TSetCooling, airchange, heatsource):
+    def __init__(self, name, pos, nElements, nWalls, nSlabs, nDoors, nWindows, volume, height, TSetHeating, TSetCooling, airchange, heatsource, moisturesource):
         self.name = name
         self.pos = pos
         self.nElements = nElements
@@ -28,6 +28,7 @@ class Zone:
         self.TSetCooling = TSetCooling
         self.airchange = airchange
         self.heatsource = heatsource
+        self.moisturesource = moisturesource
 
 class Element:
     def __init__(self, name, pos, memberOfZone, angleDegAzi, angleDegTil, height, width, thickness, mesh):

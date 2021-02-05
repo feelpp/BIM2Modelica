@@ -19,6 +19,9 @@ within;
 // intHeaSou = on: sets internal heat sources for all thermal zones:
 // used value: ${generatorCfg['MODELICA_CODE_SWITCHES'].get('intHeaSou')}
 //
+// intMoistSou = on: sets internal moisture sources for all thermal zones:
+// used value: ${generatorCfg['MODELICA_CODE_SWITCHES'].get('intMoistSou')}
+//
 // useAirPaths = on: uses air paths of windows and doors to calculate ventilation rates:
 // used value: ${generatorCfg['MODELICA_CODE_SWITCHES'].get('useAirPaths')}
 //
@@ -32,6 +35,9 @@ within;
 //
 // calcThermalComfort = on: calculates thermal comfort for each thermal zone:
 // used value: ${generatorCfg['MODELICA_CODE_SWITCHES'].get('calcThermalComfort')}
+//
+// calcHygroThermal = on: perform a hygrothermal simulation:
+// used value: ${generatorCfg['MODELICA_CODE_SWITCHES'].get('calcHygroThermal')}
 /***************************************************************************************/
 model ${data['buildingSystem'].name}
   "Model of a building with its climate ambience"
@@ -39,30 +45,55 @@ model ${data['buildingSystem'].name}
 
   %for mat in data['materials']:
   record ${mat.name}
-    extends BuildingSystems.HAM.Data.MaterialProperties.BaseClasses.MaterialThermalGeneral(
-      lambda=${mat.conductivity},
-      rho=${mat.density},
-      c=${mat.capacity}
-      );
+    extends BuildingSystems.HAM.Data.MaterialProperties.BaseClasses.MaterialHygroThermalGeneral(
+      lambdaDry = ${mat.conductivity},
+      rho = ${mat.density},
+      c = ${mat.capacity},
+      sorTabX = {0.0,0.5,0.6,0.8,0.9,0.95,1.0},
+      sorTabY = {0.0,48.0,58.0,85.0,100.0,118.0,150.0},
+      myTabX = {0.0,1.0},
+      myTabY = {180.0,180.0},
+      lambdaTabX = {0.0,180.0},
+      lambdaTabY = {1.6,1.6},
+      dwwTabX = {0.0,72.0,85.0,100.0,118.0},
+      dwwTabY = {1.0e-16,7.4e-12,2.5e-11,1.0e-10,1.2e-10},
+      dwsTabX = {0.0,72.0,85.0,100.0,118.0},
+      dwsTabY = {1.0e-16,7.4e-11,2.5e-10,1.0e-9,1.2e-9},
+      w80 = 85.0,
+      w95 = 118.0,
+      wF = 150.0,
+      porosity = 0.18,
+      A = 0.003,
+      myDry = 180.0,
+      myMoistF = 180.0,
+      moistSup = 8.0);
   end ${mat.name};
   %endfor
 
   % for con in data['constructions']:
   record ${con.name}
-    extends BuildingSystems.Buildings.Data.Constructions.OpaqueThermalConstruction(
-      nLayers=${con.nLayers},
-      thickness={
+    extends BuildingSystems.Buildings.Data.Constructions.OpaqueHygroThermalConstruction(
+      nLayers = ${con.nLayers},
+      thickness = {
       % for value in con.thickness:
         ${value}${',' if not loop.last else ''}
       % endfor
       },
-      material={
+      material = {
       % for value in con.material:
         ${value}()${',' if not loop.last else ''}
       % endfor
       });
   end ${con.name};
   % endfor
+
+  record ConstructionDoor
+    extends 
+      BuildingSystems.Buildings.Data.Constructions.OpaqueThermalConstruction(
+      nLayers = 1,
+      thickness = {0.030},
+      material = {BuildingSystems.HAM.Data.MaterialProperties.Thermal.Wood()});
+  end ConstructionDoor;
 
   model Building
     "Automatically generated multi-zone building model"
@@ -91,6 +122,11 @@ for ele in data['elementsDoor']:
     % else:
     calcIdealLoads = false,
     % endif
+    % if generatorCfg['MODELICA_CODE_SWITCHES'].getboolean('calcHygroThermal'):
+    calcHygroThermal = true,
+    % else:
+    calcHygroThermal = false,
+    % endif
     % if generatorCfg['MODELICA_CODE_SWITCHES'].getboolean('prescribedAirchange'):
     prescribedAirchange = true,
     % else:
@@ -101,6 +137,12 @@ for ele in data['elementsDoor']:
     nHeatSources = ${len(data['zones'])},
     % else:
     heatSources = false,
+    % endif
+    % if generatorCfg['MODELICA_CODE_SWITCHES'].getboolean('intMoistSou'):
+    moistureSources = true,
+    nMoistureSources = ${len(data['zones'])},
+    % else:
+    moistureSources = false,
     % endif
     convectionOnSurfaces = BuildingSystems.HAM.ConvectiveHeatTransfer.Types.Convection.const,
     alphaConstant = 25);
@@ -123,8 +165,8 @@ for ele in data['elementsDoor']:
         nAirpaths+=2
 %>\
       % if nAirpaths > 0:
-      nAirpaths=${nAirpaths},
-      heightAirpath={
+      nAirpaths = ${nAirpaths},
+      heightAirpath = {
       % for i in range(int(nAirpaths/2)):
         0.5,1.5${',' if not loop.last else '},'}
       % endfor
@@ -155,12 +197,18 @@ for ele in data['elementsDoor']:
       % else:
       heatSources = false,
       % endif
-      height=${zone.height});
+      % if generatorCfg['MODELICA_CODE_SWITCHES'].getboolean('intMoistSou'):
+      moistureSources = true,
+      nMoistureSources = 1,
+      % else:
+      moistureSources = false,
+      % endif
+      height = ${zone.height});
   % endfor
 
     // Opaque construction elements
   % for ele in data['elementsOpaque']:
-    BuildingSystems.Buildings.Constructions.Walls.WallThermal1DNodes ${ele.name}(
+    BuildingSystems.Buildings.Constructions.Walls.WallHygroThermal1DNodes ${ele.name}(
     % if generatorCfg['MODELICA_CODE_SWITCHES'].getboolean('surTemOut'):
       show_TSur = true,
     % endif
@@ -169,7 +217,17 @@ for ele in data['elementsDoor']:
       angleDegTil = ${ele.angleDegTil},
       AInnSur = ${ele.AInnSur},
       height = ${ele.height},
-      width = ${ele.width});
+      width = ${ele.width},
+      nNodes = {
+      % for con in data['constructions']:
+        % if con.name == ele.constructionData:
+          % for i in range(con.nLayers):
+            ${10}${',' if not loop.last else ''}
+          % endfor
+        % endif
+      % endfor
+      }
+      );
   % endfor
 
     // Transparent construction elements
@@ -201,7 +259,7 @@ for ele in data['elementsDoor']:
     % else:
       calcAirchange = false,
     % endif
-      redeclare ${ele.constructionData} constructionData,
+      redeclare ConstructionDoor constructionData,
       angleDegAzi = ${ele.angleDegAzi},
       angleDegTil = ${ele.angleDegTil},
       height = ${ele.height},
@@ -262,6 +320,7 @@ for ele in data['elementsDoor']:
     connect(${data['zones'][i].name}.Q_flow_heating, Q_flow_heating[${i+1}]);
   % endfor
   % endif
+
   % if generatorCfg['MODELICA_CODE_SWITCHES'].getboolean('useAirPaths'):
 
 <% j = 1 %>\
@@ -333,6 +392,7 @@ for ele in data['elementsDoor']:
     connect(${data['zones'][i].name}.xAirAmb, xAirAmb);
   % endfor
   % endif
+
   % if generatorCfg['MODELICA_CODE_SWITCHES'].getboolean('intHeaSou'):
     // Radiative heating source of each thermal zones
   % for i in range(len(data['zones'])):
@@ -344,6 +404,14 @@ for ele in data['elementsDoor']:
     connect(${data['zones'][i].name}.conHeatSourcesPorts[1], conHeatSourcesPorts[${i+1}]);
   % endfor
   % endif
+
+  % if generatorCfg['MODELICA_CODE_SWITCHES'].getboolean('intMoistSou'):
+    // Moisture source of each thermal zones
+  % for i in range(len(data['zones'])):
+    connect(${data['zones'][i].name}.moistureSourcesPorts[1], moisturePorts[${i+1}]);
+  % endfor
+  % endif
+  
   % if generatorCfg['MODELICA_CODE_SWITCHES'].getboolean('surTemOut'):
     // Connections for surface temperatures
   <% i = 1 %>\
@@ -378,14 +446,14 @@ for ele in data['elementsDoor']:
     // Heating set temperature of the thermal zones
     % for zone in data['zones']:
     Modelica.Blocks.Sources.Constant TSetHeating_${zone.name}(
-      k=273.15 + ${zone.TSetHeating})
-      annotation (Placement(transformation(extent={{58,16},{50,24}})));
+      k = 273.15 + ${zone.TSetHeating})
+      annotation (Placement(transformation(extent={{58,22},{50,30}})));
     % endfor
 
     // Cooling set temperature of each thermal zones
     % for zone in data['zones']:
     Modelica.Blocks.Sources.Constant TSetCooling_${zone.name}(
-      k=273.15 + ${zone.TSetCooling})
+      k = 273.15 + ${zone.TSetCooling})
       annotation (Placement(transformation(extent={{58,2},{50,10}})));
     % endfor
     % endif
@@ -393,8 +461,8 @@ for ele in data['elementsDoor']:
     // Air change rate of each thermal zones
     % for zone in data['zones']:
     Modelica.Blocks.Sources.Constant airchange_${zone.name}(
-      k=${zone.airchange})
-    annotation (Placement(transformation(extent={{58,-14},{50,-6}})));
+      k = ${zone.airchange})
+    annotation (Placement(transformation(extent={{58,-22},{50,-14}})));
     % endfor
     % endif
 
@@ -402,31 +470,43 @@ for ele in data['elementsDoor']:
     % if generatorCfg['MODELICA_CODE_SWITCHES'].getboolean('intHeaSou'):
       % for zone in data['zones']:
     Modelica.Blocks.Sources.Constant heatsources_${zone.name}(
-      k=${zone.heatsource})
-      annotation (Placement(transformation(extent={{44,22},{36,30}})));
+      k = ${zone.heatsource})
+      annotation (Placement(transformation(extent={{58,40},{50,48}})));
       % endfor
     Modelica.Thermal.HeatTransfer.Sources.PrescribedHeatFlow heatFlow[${len(data['zones'])}]
-      annotation (Placement(transformation(extent={{32,22},{24,30}})));
+      annotation (Placement(transformation(extent={{38,40},{30,48}})));
     BuildingSystems.Buildings.BaseClasses.RelationRadiationConvection relationRadiationConvection[${len(data['zones'])}](
       each radiationportion = 0.5)
-      annotation (Placement(transformation(extent={{-5,-5},{5,5}},rotation=-90,origin={21,21})));
+      annotation (Placement(transformation(extent={{-5,-5},{5,5}},rotation=-90,origin={21,25})));
     % endif
+
+     // Moisture source of each thermal zones
+    % if generatorCfg['MODELICA_CODE_SWITCHES'].getboolean('intMoistSou'):
+      % for zone in data['zones']:
+    Modelica.Blocks.Sources.Constant moisturesources_${zone.name}(
+      k = ${zone.moisturesource})
+      annotation (Placement(transformation(extent={{58,58},{50,66}})));
+      % endfor
+    BuildingSystems.HAM.HeatAndMoistureTransport.Sources.PrescribedMoistureFlow moistureFlow[${len(data['zones'])}]
+      annotation (Placement(transformation(extent={{38,58},{30,66}})));
+    % endif
+
   equation
     // building constructions to the ambience
     connect(ambience.toSurfacePorts, building.toAmbienceSurfacesPorts)
-      annotation (Line(points={{-12,4},{11,4}},color={0,255,0},smooth=Smooth.None));
+      annotation (Line(points={{-11,4},{11,4}},color={0,255,0},smooth=Smooth.None));
     connect(ambience.toAirPorts, building.toAmbienceAirPorts)
-      annotation (Line(points={{-12,-4},{11,-4}},color={85,170,255},smooth=Smooth.None));
+      annotation (Line(points={{-11,-4},{11,-4}},color={85,170,255},smooth=Smooth.None));
     % if generatorCfg['MODELICA_CODE_SWITCHES'].getboolean('prescribedAirchange'):
     connect(ambience.TAirRef, building.TAirAmb)
-      annotation (Line(points={{-28.2,7},{-30,7},{-30,12},{-30,14},{26.2,14},{26.2,9.8}}, color={0,0,127}));
+      annotation (Line(points={{-29,7},{-30,7},{-30,12},{-30,14},{26.2,14},{26.2,9.8}}, color={0,0,127}));
     connect(ambience.xAir, building.xAirAmb)
-      annotation (Line(points={{-28.2,5},{-32,5},{-32,16},{28.4,16},{28.4,9.8}}, color={0,0,127}));
+      annotation (Line(points={{-29,5},{-32,5},{-32,16},{28.4,16},{28.4,9.8}}, color={0,0,127}));
 
     // Air change rate of each thermal zones
     % for i in range(len(data['zones'])):
     connect(airchange_${data['zones'][i].name}.y, building.airchange[${i+1}])
-      annotation (Line(points={{29.8,3.5},{44,3.5},{44,-10},{49.6,-10}}, color={0,0,127}));
+      annotation (Line(points={{49.6,-18},{44,-18},{44,4.5},{29.8,4.5}}, color={0,0,127}));
     % endfor
     % endif
     % if generatorCfg['MODELICA_CODE_SWITCHES'].getboolean('calcIdealLoads'):
@@ -434,13 +514,13 @@ for ele in data['elementsDoor']:
     // Heating set temperature of each thermal zones
     % for i in range(len(data['zones'])):
     connect(TSetHeating_${data['zones'][i].name}.y, building.T_setHeating[${i+1}])
-      annotation (Line(points={{29.8,7.5},{44,7.5},{44,20},{49.6,20}}, color={0,0,127}));
+      annotation (Line(points={{49.6,26},{44,26},{44,8.5},{29.8,8.5}}, color={0,0,127}));
     % endfor
 
     // Cooling set temperature of each thermal zones
     % for i in range(len(data['zones'])):
     connect(TSetCooling_${data['zones'][i].name}.y, building.T_setCooling[${i+1}])
-      annotation (Line(points={{29.8,5.5},{39.6,5.5},{39.6,6},{49.6,6}}, color={0,0,127}));
+      annotation (Line(points={{49.6,6},{45.6,6},{45.6,6.5},{29.8,6.5}}, color={0,0,127}));
     % endfor
     % endif
 
@@ -448,15 +528,26 @@ for ele in data['elementsDoor']:
     % if generatorCfg['MODELICA_CODE_SWITCHES'].getboolean('intHeaSou'):
       % for i in range(len(data['zones'])):
     connect(heatsources_${data['zones'][i].name}.y, heatFlow[${i+1}].Q_flow)
-      annotation (Line(points={{32,26},{35.6,26}}, color={0,0,127}));
+      annotation (Line(points={{63.6,44},{38,44}}, color={0,0,127}));
       % endfor
     connect(relationRadiationConvection.heatPort, heatFlow.port)
-      annotation (Line(points={{21,22.5},{21,26},{24,26}}, color={191,0,0}));
+      annotation (Line(points={{21,26.5},{21,44},{30,44}}, color={191,0,0}));
     connect(relationRadiationConvection.heatPortCv, building.conHeatSourcesPorts[1:${len(data['zones'])}])
-      annotation (Line(points={{22,19},{22,10.5}}, color={191,0,0}));
+      annotation (Line(points={{22,23},{22,10},{20,10}}, color={191,0,0}));
     connect(relationRadiationConvection.heatPortLw, building.radHeatSourcesPorts[1:${len(data['zones'])}])
-      annotation (Line(points={{20,19},{20,10.5}}, color={191,0,0}));
+      annotation (Line(points={{20,23},{20,10},{22,10}}, color={191,0,0}));
     % endif
+
+    // Moisture source of each thermal zones
+    % if generatorCfg['MODELICA_CODE_SWITCHES'].getboolean('intMoistSou'):
+      % for i in range(len(data['zones'])):
+    connect(moisturesources_${data['zones'][i].name}.y, moistureFlow[${i+1}].m_flow)
+      annotation (Line(points={{49.6,62},{36.24,62}}, color={0,0,127}));
+      % endfor
+    connect(moistureFlow.moisturePort, building.moisturePorts[1:${len(data['zones'])}])
+      annotation (Line(points={{31.6,62},{17,62},{17,10}}, color={120,0,120}));
+    % endif
+
     % if generatorCfg['MODELICA_CODE_SWITCHES'].getboolean('useAirPaths'):
 
     // Air paths between the windows and the ambience

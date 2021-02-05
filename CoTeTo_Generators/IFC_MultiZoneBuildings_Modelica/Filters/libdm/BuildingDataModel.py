@@ -157,7 +157,8 @@ class BuildingZone:
            'TSetHeating',
            'TSetCooling',
            'airchange',
-           'thermalLoads')
+           'thermalLoads',
+           'moistLoads')
 
     def __init__(self, id='', name='', pos=(0.0, 0.0, 0.0), **kwargs):
         self.id = str(id)
@@ -175,6 +176,7 @@ class BuildingZone:
         self.TSetCooling = None
         self.airchange = None
         self.thermalLoads = None
+        self.moistLoads = None
         self.setParameter(**kwargs)
 
     def setParameter(self, **kwargs):
@@ -214,6 +216,7 @@ class Building:
            'heightSto',
            'nSto',
            'thermalLoads',
+           'moistLoads',
            'materials')
 
     def __init__(self, id='', name='', pos=(0.0, 0.0, 0.0), **kwargs):
@@ -243,6 +246,7 @@ class Building:
         self.heightSto = None
         self.nSto = None
         self.thermalLoads = None
+        self.moistLoads = None
         self.materials = []
         self.setParameter(**kwargs)
 
@@ -351,11 +355,15 @@ class Building:
             if value == 'nSto':
                 if self.nSto is None:
                     self.nSto = 1
-                return self.nSto
+                return self.nSto 
             if value == 'thermalLoads':
                 if self.thermalLoads is None:
                     self.thermalLoads = 0.0
                 return self.thermalLoads
+            if value == 'moistLoads':
+                if self.moistLoads is None:
+                    self.moistLoads = 0.0
+                return self.moistLoads
         else:
             raise TypeError(value, 'is an unknown parameter')
 

@@ -639,7 +639,7 @@ def getGeneratorData(buildingData):
 
     ## Building system
     buildingSystem = dmg.BuildingSystem(name=buildingData.getParameter('name'),
-                                        location='BuildingSystems.Climate.WeatherDataMeteonorm.Germany_Berlin_Meteonorm_ASCII',
+                                        location='BuildingSystems.Climate.WeatherDataIbat.Illkirch_ASCII',
                                         originalWalls = buildingData.getParameter('originalWalls'),
                                         originalDoors = buildingData.getParameter('originalDoors'),
                                         originalSlabs = buildingData.getParameter('originalSlabs'),

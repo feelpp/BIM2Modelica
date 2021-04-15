@@ -303,23 +303,23 @@ def mapIFCtoBuildingDataModel(file,filename):
     
     ## Thermal zones
     for space in Spaces:
-        treatedZones[space.Space.GlobalId] = space.Space.LongName+"_"+ str(space.Space.Name)
+        if str(space.Space.Name) is not None:
+            treatedZones[space.Space.GlobalId] = space.Space.LongName+"_"+ str(space.Space.Name)
+        else:
+            treatedZones[space.Space.GlobalId] = space.Space.LongName
           
     if not file.by_type("ifczone"):
         print("Thermal zones are not specified. Each space will be treated as a single thermal zone")
-        ns = 1
-        for space in Spaces:
-            if "Zone_" not in space.Space.Name:
-                print('Space ',space.Space.Name,' will be renamed as ',"Zone_"+str(ns),' to meet requirement')
-                space.Space.Name = "Zone_"+str(ns)
+
+        for cont, space in enumerate(Spaces):
+            if "Zone_" not in str(space.Space.Name):
+                print('Space ',space.Space.GlobalId,' will be renamed as ',"Zone_"+str(cont+1))
+                space.Space.Name = "Zone_"+str(cont+1)
 
             treatedZones[space.Space.GlobalId] = space.Space.Name
             
             spaces_for_zone[space.Space] = [Spaces2[space.Space.GlobalId]]
             zone_for_space[space.Space.GlobalId] = space.Space
-
-            ns = ns + 1
-       
     else:
         for z in file.by_type("IfcZone"):
             spaces_for_zone[z] = []
@@ -387,6 +387,7 @@ def mapIFCtoBuildingDataModel(file,filename):
                                                                        includedDoors=includedDoors)
                             bounds_by_zone.setdefault((bound.RelatedBuildingElement, side2), []).append(opaque_element)
                             iwa = iwa + 1
+
                         else:
                             iel = iel + 1
 
@@ -466,7 +467,7 @@ def mapIFCtoBuildingDataModel(file,filename):
         for related_element, side2 in bounds_by_zone:
             opaque_elements = bounds_by_zone[(related_element, side2)]
             iel = iel + 1
-
+            
             if related_element in WallInfo.keys():
                 iwaz = iwaz + 1
             else:
@@ -499,8 +500,7 @@ def mapIFCtoBuildingDataModel(file,filename):
                                                                     mesh=opaque_elements[0].mesh,
                                                                     includedWindows=includedWindows,
                                                                     includedDoors=includedDoors))
-        
-        
+
         bounds_by_zone.clear()
 
         ## Thermal zones
@@ -546,7 +546,8 @@ def getGeneratorData(buildingData):
     ## Thermal zones
     zones = []
     for zone in buildingData.getParameter('zones'):
-        zones.append(dmg.Zone(name=zone.name,
+        zones.append(dmg.Zone(id=zone.id,
+                              name=zone.name,
                               pos=(zone.pos.X(),zone.pos.Y(),zone.pos.Z()),
                               nElements=zone.numberOfElements,
                               nWalls=zone.numberOfWalls,
@@ -564,7 +565,8 @@ def getGeneratorData(buildingData):
     ## Opaque elements
     elementsOpaque = []
     for eleOpa in buildingData.getParameter('opaqueElements'):
-        elementsOpaque.append(dmg.ElementOpaque(name=eleOpa.name,
+        elementsOpaque.append(dmg.ElementOpaque(id=eleOpa.id,
+                                                name=eleOpa.name,
                                                 pos=(eleOpa.pos.X(),eleOpa.pos.Y(),eleOpa.pos.Z()),
                                                 memberOfZone=[eleOpa.adjZoneSide1,eleOpa.adjZoneSide2],
                                                 angleDegAzi=round(eleOpa.angleDegAzi,3),
@@ -580,7 +582,8 @@ def getGeneratorData(buildingData):
     ## Transparent elements
     elementsTransparent = []
     for eleTra in buildingData.getParameter('transparentElements'):
-        elementsTransparent.append(dmg.ElementTransparent(name=eleTra.name,
+        elementsTransparent.append(dmg.ElementTransparent(id=eleTra.id,
+                                                          name=eleTra.name,
                                                           pos=(eleTra.pos.X(),eleTra.pos.Y(),eleTra.pos.Z()),
                                                           memberOfZone=[eleTra.adjZoneSide1,eleTra.adjZoneSide2],
                                                           angleDegAzi=round(eleTra.angleDegAzi,3),
@@ -593,7 +596,8 @@ def getGeneratorData(buildingData):
     ## Door elements
     elementsDoor = []
     for eleDoo in buildingData.getParameter('doorElements'):
-        elementsDoor.append(dmg.ElementDoor(name=eleDoo.name,
+        elementsDoor.append(dmg.ElementDoor(id=eleDoo.id,
+                                            name=eleDoo.name,
                                             pos=(eleDoo.pos.X(),eleDoo.pos.Y(),eleDoo.pos.Z()),
                                             memberOfZone=[eleDoo.adjZoneSide1,eleDoo.adjZoneSide2],
                                             angleDegAzi=round(eleDoo.angleDegAzi,3),

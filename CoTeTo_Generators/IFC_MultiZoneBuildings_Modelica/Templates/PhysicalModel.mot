@@ -42,7 +42,6 @@ within;
 model ${data['buildingSystem'].name}
   "Model of a building with its climate ambience"
   extends Modelica.Icons.Example;
-
   %for mat in data['materials']:
   record ${mat.name}
     extends BuildingSystems.HAM.Data.MaterialProperties.BaseClasses.MaterialHygroThermalGeneral(
@@ -150,6 +149,7 @@ for ele in data['elementsDoor']:
     // Thermal zones
   % for zone in data['zones']:
     BuildingSystems.Buildings.Zones.ZoneTemplateAirvolumeMixed ${zone.name}(
+      IfcId = "${zone.id}",
       V=${zone.volume},
       convectionOnSurfaces = BuildingSystems.HAM.ConvectiveHeatTransfer.Types.Convection.const,
       alphaConstant = 7.5,
@@ -209,6 +209,7 @@ for ele in data['elementsDoor']:
     // Opaque construction elements
   % for ele in data['elementsOpaque']:
     BuildingSystems.Buildings.Constructions.Walls.WallHygroThermal1DNodes ${ele.name}(
+      IfcId = "${ele.id}",
     % if generatorCfg['MODELICA_CODE_SWITCHES'].getboolean('surTemOut'):
       show_TSur = true,
     % endif
@@ -233,6 +234,7 @@ for ele in data['elementsDoor']:
     // Transparent construction elements
   % for ele in data['elementsTransparent']:
     BuildingSystems.Buildings.Constructions.Windows.Window ${ele.name}(
+      IfcId = "${ele.id}",
     % if generatorCfg['MODELICA_CODE_SWITCHES'].getboolean('surTemOut'):
       show_TSur = true,
     % endif
@@ -251,6 +253,7 @@ for ele in data['elementsDoor']:
     // Door elements
   % for ele in data['elementsDoor']:
     BuildingSystems.Buildings.Constructions.Doors.Door ${ele.name}(
+      IfcId = "${ele.id}",
     % if generatorCfg['MODELICA_CODE_SWITCHES'].getboolean('surTemOut'):
       show_TSur = true,
     % endif

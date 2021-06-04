@@ -42,49 +42,79 @@ within;
 model ${data['buildingSystem'].name}
   "Model of a building with its climate ambience"
   extends Modelica.Icons.Example;
-  %for mat in data['materials']:
-  record ${mat.name}
-    extends BuildingSystems.HAM.Data.MaterialProperties.BaseClasses.MaterialHygroThermalGeneral(
-      lambdaDry = ${mat.conductivity},
-      rho = ${mat.density},
-      c = ${mat.capacity},
-      sorTabX = {0.0,0.5,0.6,0.8,0.9,0.95,1.0},
-      sorTabY = {0.0,48.0,58.0,85.0,100.0,118.0,150.0},
-      myTabX = {0.0,1.0},
-      myTabY = {180.0,180.0},
-      lambdaTabX = {0.0,180.0},
-      lambdaTabY = {1.6,1.6},
-      dwwTabX = {0.0,72.0,85.0,100.0,118.0},
-      dwwTabY = {1.0e-16,7.4e-12,2.5e-11,1.0e-10,1.2e-10},
-      dwsTabX = {0.0,72.0,85.0,100.0,118.0},
-      dwsTabY = {1.0e-16,7.4e-11,2.5e-10,1.0e-9,1.2e-9},
-      w80 = 85.0,
-      w95 = 118.0,
-      wF = 150.0,
-      porosity = 0.18,
-      A = 0.003,
-      myDry = 180.0,
-      myMoistF = 180.0,
-      moistSup = 8.0);
-  end ${mat.name};
-  %endfor
+  % if generatorCfg['MODELICA_CODE_SWITCHES'].getboolean('calcHygroThermal'):
+    %for mat in data['materials']:
+    record ${mat.name}
+      extends BuildingSystems.HAM.Data.MaterialProperties.BaseClasses.MaterialHygroThermalGeneral(
+        lambdaDry = ${mat.conductivity},
+        rho = ${mat.density},
+        c = ${mat.capacity},
+        sorTabX = {0.0,0.5,0.6,0.8,0.9,0.95,1.0},
+        sorTabY = {0.0,48.0,58.0,85.0,100.0,118.0,150.0},
+        myTabX = {0.0,1.0},
+        myTabY = {180.0,180.0},
+        lambdaTabX = {0.0,180.0},
+        lambdaTabY = {${mat.conductivity},${mat.conductivity}},
+        dwwTabX = {0.0,72.0,85.0,100.0,118.0},
+        dwwTabY = {1.0e-16,7.4e-12,2.5e-11,1.0e-10,1.2e-10},
+        dwsTabX = {0.0,72.0,85.0,100.0,118.0},
+        dwsTabY = {1.0e-16,7.4e-11,2.5e-10,1.0e-9,1.2e-9},
+        w80 = 85.0,
+        w95 = 118.0,
+        wF = 150.0,
+        porosity = 0.18,
+        A = 0.003,
+        myDry = 180.0,
+        myMoistF = 180.0,
+        moistSup = 8.0);
+    end ${mat.name};
+    %endfor
 
-  % for con in data['constructions']:
-  record ${con.name}
-    extends BuildingSystems.Buildings.Data.Constructions.OpaqueHygroThermalConstruction(
-      nLayers = ${con.nLayers},
-      thickness = {
-      % for value in con.thickness:
-        ${value}${',' if not loop.last else ''}
-      % endfor
-      },
-      material = {
-      % for value in con.material:
-        ${value}()${',' if not loop.last else ''}
-      % endfor
-      });
-  end ${con.name};
-  % endfor
+    % for con in data['constructions']:
+    record ${con.name}
+      extends BuildingSystems.Buildings.Data.Constructions.OpaqueHygroThermalConstruction(
+        nLayers = ${con.nLayers},
+        thickness = {
+        % for value in con.thickness:
+          ${value}${',' if not loop.last else ''}
+        % endfor
+        },
+        material = {
+        % for value in con.material:
+          ${value}()${',' if not loop.last else ''}
+        % endfor
+        });
+    end ${con.name};
+    % endfor
+
+  %else:
+    %for mat in data['materials']:
+    record ${mat.name}
+      extends BuildingSystems.HAM.Data.MaterialProperties.BaseClasses.MaterialThermalGeneral(
+        lambdaDry = ${mat.conductivity},
+        rho = ${mat.density},
+        c = ${mat.capacity});
+    end ${mat.name};
+    %endfor
+
+    % for con in data['constructions']:
+    record ${con.name}
+      extends BuildingSystems.Buildings.Data.Constructions.OpaqueThermalConstruction(
+        nLayers = ${con.nLayers},
+        thickness = {
+        % for value in con.thickness:
+          ${value}${',' if not loop.last else ''}
+        % endfor
+        },
+        material = {
+        % for value in con.material:
+          ${value}()${',' if not loop.last else ''}
+        % endfor
+        });
+    end ${con.name};
+    % endfor
+  % endif
+
 
   record ConstructionDoor
     extends 
@@ -207,29 +237,56 @@ for ele in data['elementsDoor']:
   % endfor
 
     // Opaque construction elements
-  % for ele in data['elementsOpaque']:
-    BuildingSystems.Buildings.Constructions.Walls.WallHygroThermal1DNodes ${ele.name}(
-      IfcId = "${ele.id}",
-    % if generatorCfg['MODELICA_CODE_SWITCHES'].getboolean('surTemOut'):
-      show_TSur = true,
-    % endif
-      redeclare ${ele.constructionData} constructionData,
-      angleDegAzi = ${ele.angleDegAzi},
-      angleDegTil = ${ele.angleDegTil},
-      AInnSur = ${ele.AInnSur},
-      height = ${ele.height},
-      width = ${ele.width},
-      nNodes = {
-      % for con in data['constructions']:
-        % if con.name == ele.constructionData:
-          % for i in range(con.nLayers):
-            ${10}${',' if not loop.last else ''}
-          % endfor
-        % endif
-      % endfor
-      }
-      );
-  % endfor
+  % if generatorCfg['MODELICA_CODE_SWITCHES'].getboolean('calcHygroThermal'):
+    % for ele in data['elementsOpaque']:
+      BuildingSystems.Buildings.Constructions.Walls.WallHygroThermal1DNodes ${ele.name}(
+        IfcId = "${ele.id}",
+      % if generatorCfg['MODELICA_CODE_SWITCHES'].getboolean('surTemOut'):
+        show_TSur = true,
+      % endif
+        redeclare ${ele.constructionData} constructionData,
+        angleDegAzi = ${ele.angleDegAzi},
+        angleDegTil = ${ele.angleDegTil},
+        AInnSur = ${ele.AInnSur},
+        height = ${ele.height},
+        width = ${ele.width},
+        nNodes = {
+        % for con in data['constructions']:
+          % if con.name == ele.constructionData:
+            % for i in range(con.nLayers):
+              ${2}${',' if not loop.last else ''}
+            % endfor
+          % endif
+        % endfor
+        }
+        );
+    % endfor
+  % else:
+    % for ele in data['elementsOpaque']:
+      BuildingSystems.Buildings.Constructions.Walls.WallThermal1DNodes ${ele.name}(
+        IfcId = "${ele.id}",
+      % if generatorCfg['MODELICA_CODE_SWITCHES'].getboolean('surTemOut'):
+        show_TSur = true,
+      % endif
+        redeclare ${ele.constructionData} constructionData,
+        angleDegAzi = ${ele.angleDegAzi},
+        angleDegTil = ${ele.angleDegTil},
+        AInnSur = ${ele.AInnSur},
+        height = ${ele.height},
+        width = ${ele.width},
+        nNodes = {
+        % for con in data['constructions']:
+          % if con.name == ele.constructionData:
+            % for i in range(con.nLayers):
+              ${10}${',' if not loop.last else ''}
+            % endfor
+          % endif
+        % endfor
+        }
+        );
+    % endfor
+  % endif
+
 
     // Transparent construction elements
   % for ele in data['elementsTransparent']:

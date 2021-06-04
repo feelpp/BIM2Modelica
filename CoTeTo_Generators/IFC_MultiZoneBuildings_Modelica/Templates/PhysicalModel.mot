@@ -91,7 +91,7 @@ model ${data['buildingSystem'].name}
     %for mat in data['materials']:
     record ${mat.name}
       extends BuildingSystems.HAM.Data.MaterialProperties.BaseClasses.MaterialThermalGeneral(
-        lambdaDry = ${mat.conductivity},
+        lambda = ${mat.conductivity},
         rho = ${mat.density},
         c = ${mat.capacity});
     end ${mat.name};

@@ -370,7 +370,7 @@ def mapIFCtoBuildingDataModel(file,filename):
                                         includedWindows.append((b.Width,b.Height))
                                     if b.RelatedBuildingElement in DoorToStyle.keys():
                                         includedDoors.append((b.Width,b.Height))
-                            opaque_element = bdm.BuildingElementOpaque(id=bound.Id,
+                            opaque_element = bdm.BuildingElementOpaque(id=''.join(list(bound.Id)[-22:]),
                                                                        name="wall_"+str(iwa),
                                                                        pos=(bound.Position.X(),bound.Position.Y(),bound.Position.Z()),
                                                                        angleDegAzi=azimuthAngle(bound.Normal.X(),bound.Normal.Y(),bound.Normal.Z()),
@@ -399,7 +399,7 @@ def mapIFCtoBuildingDataModel(file,filename):
                                 heightMax = bound.Position.Z()
                             if bound.Position.Z() < heightMin:
                                 heightMin = bound.Position.Z()
-                            opaque_element = bdm.BuildingElementOpaque(id=bound.Id,
+                            opaque_element = bdm.BuildingElementOpaque(id=''.join(list(bound.Id)[-22:]),
                                                                        name="slab_"+str(isl),
                                                                        pos=(bound.Position.X(),bound.Position.Y(),bound.Position.Z()),
                                                                        angleDegAzi=azimuthAngle(bound.Normal.X(),bound.Normal.Y(),bound.Normal.Z()),
@@ -413,7 +413,7 @@ def mapIFCtoBuildingDataModel(file,filename):
                                                                        constructionData=treatedCon[BuildingElementToMaterialLayerSet[bound.RelatedBuildingElement]],
                                                                        mesh=DataClasses.Mesh(bound.Face),
                                                                        includedWindows=[],
-                                                                       includedDoors=[])
+                                                                       includedDoors=[])                                                                             
                             bounds_by_zone.setdefault((bound.RelatedBuildingElement, side2), []).append(opaque_element)
                             isl = isl + 1
                         else:
@@ -426,7 +426,7 @@ def mapIFCtoBuildingDataModel(file,filename):
                         if bound.OtherSideBoundary not in treatedBuildingEle.keys():
                             mesh=DataClasses.Mesh(bound.Face)
                             treatedBuildingEle[bound.Id] = "door_"+str(ido)
-                            buildingData.addDoorElement(bdm.BuildingElementDoor(id=bound.Id,
+                            buildingData.addDoorElement(bdm.BuildingElementDoor(id=''.join(list(bound.Id)[-22:]),
                                                                                 name="door_"+str(ido),
                                                                                 pos=(bound.Position.X(),bound.Position.Y(),bound.Position.Z()),
                                                                                 angleDegAzi=azimuthAngle(bound.Normal.X(),bound.Normal.Y(),bound.Normal.Z()),
@@ -448,7 +448,7 @@ def mapIFCtoBuildingDataModel(file,filename):
                         if bound.OtherSideBoundary not in treatedBuildingEle.keys():
                             mesh=DataClasses.Mesh(bound.Face)
                             treatedBuildingEle[bound.Id] = "window_"+str(iwi)
-                            buildingData.addTransparentElement(bdm.BuildingElementTransparent(id=bound.Id,
+                            buildingData.addTransparentElement(bdm.BuildingElementTransparent(id=''.join(list(bound.Id)[-22:]),
                                                                                               name="window_"+str(iwi),
                                                                                               pos=(bound.Position.X(),bound.Position.Y(),bound.Position.Z()),
                                                                                               angleDegAzi=azimuthAngle(bound.Normal.X(),bound.Normal.Y(),bound.Normal.Z()),
@@ -643,7 +643,8 @@ def getGeneratorData(buildingData):
 
     ## Building system
     buildingSystem = dmg.BuildingSystem(name=buildingData.getParameter('name'),
-                                        location='BuildingSystems.Climate.WeatherDataIbat.Illkirch_ASCII',
+                                        # location='BuildingSystems.Climate.WeatherDataIbat.Illkirch_ASCII',
+                                        location='BuildingSystems.Climate.WeatherDataMeteonorm.USA_SanFrancisco_Meteonorm_ASCII',
                                         originalWalls = buildingData.getParameter('originalWalls'),
                                         originalDoors = buildingData.getParameter('originalDoors'),
                                         originalSlabs = buildingData.getParameter('originalSlabs'),

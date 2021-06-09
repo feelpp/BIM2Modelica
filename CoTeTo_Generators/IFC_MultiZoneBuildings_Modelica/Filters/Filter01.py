@@ -576,7 +576,8 @@ def getGeneratorData(buildingData):
                                                 thickness=round(eleOpa.thickness,3),
                                                 mesh=eleOpa.mesh,
                                                 constructionData=eleOpa.constructionData,
-                                                AInnSur=round(sum(x[0]*x[1] for x in eleOpa.includedWindows)+sum(y[0]*y[1] for y in eleOpa.includedDoors),3),
+                                                # AInnSur=round(sum(x[0]*x[1] for x in eleOpa.includedWindows)+sum(y[0]*y[1] for y in eleOpa.includedDoors),3),
+                                                AInnSur=round(eleOpa.width*eleOpa.height-eleOpa.areaNet,3), 
                                                 includedWindows=eleOpa.includedWindows,
                                                 includedDoors=eleOpa.includedDoors))
     ## Transparent elements
